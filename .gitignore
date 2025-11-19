@@ -1,0 +1,17 @@
+# Docker runtime data
+grafana/data/
+prometheus/data/
+mosquitto/data/
+mosquitto/log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+config.py
+
+# MicroPython
+*.mpy
+
+# IDE
+.vscode/
