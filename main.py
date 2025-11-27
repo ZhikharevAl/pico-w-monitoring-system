@@ -1,19 +1,30 @@
 """Главный файл - автоматически запускается при старте Pico."""
 
 import time
+from config import (
+    CLIENT_ID,
+    MQTT_PORT,
+    MQTT_SERVER,
+    MQTT_TOPIC,
+    PUBLISH_INTERVAL,
+    WIFI_PASSWORD,
+    WIFI_SSID,
+)
 import machine
 
-from config import *
+
 from wifi_manager import WiFiManager
-from temperature_sensor import TemperatureSensor
+from system_metrics import SystemMetrics
 from mqtt_publisher import MQTTPublisher
 
 
 class PicoMonitor:
     def __init__(self):
         self.wifi = WiFiManager(WIFI_SSID, WIFI_PASSWORD)
-        self.temperature = TemperatureSensor()
+        self.metrics = SystemMetrics()
+        self.metrics.wlan = self.wifi.wlan
         self.mqtt = MQTTPublisher(MQTT_SERVER, MQTT_PORT, CLIENT_ID, MQTT_TOPIC)
+        self.reconnect_count = 0
 
     def setup(self) -> bool:
         if not self.wifi.connect():
@@ -30,6 +41,7 @@ class PicoMonitor:
                     if not self.wifi.connect():
                         time.sleep(10)
                         continue
+                    self.reconnect_count += 1
 
                 if not self.mqtt.client:
                     print("Reconnecting MQTT...")
@@ -37,8 +49,10 @@ class PicoMonitor:
                         time.sleep(10)
                         continue
 
-                temp = self.temperature.read()
-                self.mqtt.publish({"temperature": temp})
+                metrics = self.metrics.get_all_metrics(self.reconnect_count)
+                print(f"Metrics: {metrics}")
+
+                self.mqtt.publish(metrics)
                 time.sleep(PUBLISH_INTERVAL)
 
             except Exception as e:
