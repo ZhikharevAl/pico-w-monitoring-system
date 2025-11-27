@@ -1,7 +1,7 @@
 """Управление WiFi подключением."""
 
-import time
 import network
+import time
 
 
 class WiFiManager:
