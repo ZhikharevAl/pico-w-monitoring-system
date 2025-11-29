@@ -20,15 +20,13 @@ class MQTTPublisher:
         max_attempts = 3
         for attempt in range(max_attempts):
             try:
-                # Создаём клиента с увеличенным keepalive
                 self.client = MQTTClient(
                     self.client_id,
                     self.server,
                     port=self.port,
-                    keepalive=60,  # Увеличиваем keepalive до 60 секунд
+                    keepalive=60,
                 )
 
-                # Пытаемся подключиться
                 self.client.connect(clean_session=True)
                 print("MQTT connected!")
                 return True
@@ -38,8 +36,7 @@ class MQTTPublisher:
                 self.client = None
 
                 if attempt < max_attempts - 1:
-                    # Ждём перед следующей попыткой
-                    wait_time = (attempt + 1) * 2  # 2, 4, 6 секунд
+                    wait_time = (attempt + 1) * 2
                     print(f"Retrying in {wait_time} seconds...")
                     time.sleep(wait_time)
 

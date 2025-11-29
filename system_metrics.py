@@ -151,7 +151,6 @@ class SystemMetrics:
             battery_percent = 100
         elif vsys >= 3.3:
             power_source = "battery"
-            # Линейная аппроксимация: 3.3V = 0%, 4.2V = 100%
             battery_percent = round(((vsys - 3.3) / 0.9) * 100, 2)
         else:
             power_source = "critical"
@@ -167,7 +166,6 @@ class SystemMetrics:
         """Метрики производительности."""
         cpu_freq = self.get_cpu_frequency()
 
-        # Определяем режим работы по частоте
         if cpu_freq >= 250_000_000:
             cpu_mode = "performance"
         elif cpu_freq >= 125_000_000:
@@ -187,8 +185,6 @@ class SystemMetrics:
             "temperature_celsius": self.get_temperature(),
             "uptime_seconds": self.get_uptime(),
         }
-
-        # Добавляем все группы метрик
         metrics.update(self.get_memory_stats())
         metrics.update(self.get_wifi_metrics(reconnect_count))
         metrics.update(self.get_system_info())

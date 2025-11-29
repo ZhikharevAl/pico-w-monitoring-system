@@ -35,11 +35,9 @@ class PicoMonitor:
             print("ERROR: WiFi initialization failed")
             return False
 
-        # Ждём стабилизации сети
         print("Waiting for network stability...")
         time.sleep(3)
 
-        # Подключение MQTT
         if not self.mqtt.connect():
             print("ERROR: MQTT initialization failed")
             return False
@@ -53,7 +51,6 @@ class PicoMonitor:
 
         while True:
             try:
-                # Проверка WiFi подключения
                 if not self.wifi.is_connected():
                     print("\n[!] WiFi disconnected, reconnecting...")
                     if not self.wifi.connect():
@@ -62,14 +59,12 @@ class PicoMonitor:
                         continue
                     self.reconnect_count += 1
 
-                    # После переподключения WiFi нужно восстановить MQTT
                     time.sleep(2)
                     if not self.mqtt.connect():
                         print("MQTT reconnection after WiFi failed")
                         time.sleep(5)
                         continue
 
-                # Проверка MQTT подключения
                 if not self.mqtt.is_connected():
                     print("\n[!] MQTT disconnected, reconnecting...")
                     if not self.mqtt.connect():
@@ -77,10 +72,8 @@ class PicoMonitor:
                         time.sleep(10)
                         continue
 
-                # Сбор и публикация метрик
                 metrics = self.metrics.get_all_metrics(self.reconnect_count)
 
-                # Добавляем счётчик ошибок в метрики
                 metrics["error_count"] = self.error_count
 
                 print(f"\n--- Metrics at {time.time()} ---")
@@ -89,21 +82,18 @@ class PicoMonitor:
                 print(f"WiFi RSSI: {metrics.get('wifi_rssi_dbm')} dBm")
                 print(f"Uptime: {metrics.get('uptime_seconds')}s")
 
-                # Публикация
                 if self.mqtt.publish(metrics):
-                    self.error_count = 0  # Сброс счётчика при успехе
+                    self.error_count = 0
                 else:
                     self.error_count += 1
                     print(f"Publish failed (error count: {self.error_count})")
 
-                    # Если много ошибок подряд - переподключаемся
                     if self.error_count >= 3:
                         print("Too many errors, forcing reconnection...")
                         self.mqtt.disconnect()
                         time.sleep(5)
                         continue
 
-                # Ожидание перед следующей итерацией
                 time.sleep(PUBLISH_INTERVAL)
 
             except MemoryError as e:
@@ -111,7 +101,7 @@ class PicoMonitor:
                 import gc
 
                 gc.collect()
-                print(f"Memory freed, retrying...")
+                print("Memory freed, retrying...")
                 time.sleep(5)
 
             except Exception as e:
@@ -152,6 +142,5 @@ def main():
         machine.reset()
 
 
-# Запуск
 if __name__ == "__main__":
     main()
