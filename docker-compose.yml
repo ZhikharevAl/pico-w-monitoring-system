@@ -3,79 +3,70 @@ services:
     image: eclipse-mosquitto:2.0
     container_name: mosquitto
     ports:
-      - "1883:1883"
+      - "1884:1883"
+      - "9001:9001"
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
     networks:
-      - monitoring-net
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "mosquitto_pub -h localhost -t test -m test -q 1 || exit 1",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - monitoring
     restart: unless-stopped
 
   mqtt-exporter:
     image: kpetrem/mqtt-exporter
     container_name: mqtt-exporter
-    depends_on:
-      mosquitto:
-        condition: service_healthy
+    ports:
+      - "9000:9000"
     environment:
       - MQTT_ADDRESS=mosquitto
       - MQTT_PORT=1883
-      - MQTT_TOPIC=pico/metrics
+      - MQTT_TOPIC=pico_metrics
       - PROMETHEUS_PORT=9000
-    ports:
-      - "9000:9000"
+      - LOG_LEVEL=DEBUG
     networks:
-      - monitoring-net
+      - monitoring
     restart: unless-stopped
+    depends_on:
+      - mosquitto
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
-    depends_on:
-      - mqtt-exporter
+    ports:
+      - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-      - "--web.listen-address=:9090"
-    ports:
-      - "9090:9090"
     networks:
-      - monitoring-net
+      - monitoring
     restart: unless-stopped
+    depends_on:
+      - mqtt-exporter
 
   grafana:
     image: grafana/grafana:9.2.3
     container_name: grafana
-    depends_on:
-      - prometheus
     ports:
       - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_SERVER_HTTP_PORT=3000
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     networks:
-      - monitoring-net
+      - monitoring
     restart: unless-stopped
+    depends_on:
+      - prometheus
 
 networks:
-  monitoring-net:
+  monitoring:
+    driver: bridge
 
 volumes:
   grafana-data:
