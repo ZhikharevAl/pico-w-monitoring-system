@@ -1,4 +1,4 @@
-"""Главный файл - автоматически запускается при старте Pico."""
+"""Главный файл"""
 
 import time
 from config import (
@@ -51,6 +51,7 @@ class PicoMonitor:
 
         while True:
             try:
+                # Проверка WiFi
                 if not self.wifi.is_connected():
                     print("\n[!] WiFi disconnected, reconnecting...")
                     if not self.wifi.connect():
@@ -65,6 +66,7 @@ class PicoMonitor:
                         time.sleep(5)
                         continue
 
+                # Проверка MQTT
                 if not self.mqtt.is_connected():
                     print("\n[!] MQTT disconnected, reconnecting...")
                     if not self.mqtt.connect():
@@ -72,21 +74,38 @@ class PicoMonitor:
                         time.sleep(10)
                         continue
 
-                metrics = self.metrics.get_all_metrics(self.reconnect_count)
+                # Сбор метрик
+                metrics = self.metrics.get_all_metrics(
+                    reconnect_count=self.reconnect_count, error_count=self.error_count
+                )
 
-                metrics["error_count"] = self.error_count
-
+                # Вывод основных метрик
                 print(f"\n--- Metrics at {time.time()} ---")
-                print(f"Temp: {metrics.get('temperature_celsius')}°C")
-                print(f"Memory: {metrics.get('memory_usage_percent')}%")
-                print(f"WiFi RSSI: {metrics.get('wifi_rssi_dbm')} dBm")
+                print(
+                    f"Health: {metrics.get('health_status')} (score: {metrics.get('health_score')})"
+                )
+                print(
+                    f"Temp: {metrics.get('temperature_celsius')}°C (max: {metrics.get('cpu_temp_max_celsius')}°C)"
+                )
+                print(
+                    f"Memory: {metrics.get('memory_usage_percent')}% (fragmentation: {metrics.get('memory_fragmentation')}%)"
+                )
+                print(
+                    f"WiFi: {metrics.get('wifi_signal_quality_percent')}% ({metrics.get('wifi_rssi_dbm')} dBm)"
+                )
+                print(f"Battery: {metrics.get('battery_percent')}% ({metrics.get('power_source')})")
+                print(f"MQTT Success Rate: {metrics.get('mqtt_publish_success_rate')}%")
                 print(f"Uptime: {metrics.get('uptime_seconds')}s")
 
+                # Публикация с записью результата
                 if self.mqtt.publish(metrics):
                     self.error_count = 0
+                    self.metrics.record_mqtt_publish(success=True)
+                    print("✓ Published successfully")
                 else:
                     self.error_count += 1
-                    print(f"Publish failed (error count: {self.error_count})")
+                    self.metrics.record_mqtt_publish(success=False)
+                    print(f"✗ Publish failed (error count: {self.error_count})")
 
                     if self.error_count >= 3:
                         print("Too many errors, forcing reconnection...")
@@ -101,12 +120,13 @@ class PicoMonitor:
                 import gc
 
                 gc.collect()
-                print("Memory freed, retrying...")
+                print(f"Memory freed: {gc.mem_free()} bytes available")
                 time.sleep(5)
 
             except Exception as e:
                 print(f"\n[!] Unexpected Error: {e}")
                 self.error_count += 1
+                self.metrics.record_mqtt_publish(success=False)
                 self.mqtt.disconnect()
                 time.sleep(5)
 
@@ -116,6 +136,7 @@ def main():
     try:
         print("\n" + "=" * 50)
         print("Raspberry Pi Pico W Monitoring System")
+        print("Enhanced Version with Extended Metrics")
         print("=" * 50)
 
         monitor = PicoMonitor()
