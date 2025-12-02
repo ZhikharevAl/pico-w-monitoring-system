@@ -1,5 +1,8 @@
 # Pico W Monitoring System
 
+![photo_2025-12-02_23-13-01](https://github.com/user-attachments/assets/8382272b-424a-415f-ac85-0eed58dfbc52)
+
+
 Система мониторинга для Raspberry Pi Pico W с полным стеком observability: MQTT → Prometheus → Grafana.
 
 ## Содержание
